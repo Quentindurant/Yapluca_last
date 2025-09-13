@@ -25,7 +25,9 @@ function MainTabNavigator() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
-          if (route.name === 'Carte') {
+          if (route.name === 'Accueil') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Carte') {
             iconName = focused ? 'map' : 'map-outline';
           } else if (route.name === 'Historique') {
             iconName = focused ? 'time' : 'time-outline';
@@ -44,7 +46,8 @@ function MainTabNavigator() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Carte" component={MapScreen} />
+      <Tab.Screen name="Accueil" component={MapScreen} />
+      <Tab.Screen name="Carte" component={MapViewScreen} />
       <Tab.Screen name="Historique" component={HistoryScreen} />
       <Tab.Screen name="Profil" component={ProfileScreen} />
     </Tab.Navigator>
@@ -72,7 +75,6 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />
             <Stack.Screen name="StationDetail" component={StationDetailScreen} />
-            <Stack.Screen name="MapView" component={MapViewScreen} />
           </>
         )}
       </Stack.Navigator>

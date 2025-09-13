@@ -287,7 +287,7 @@ export default function MapViewScreen({ navigation, route }) {
       {/* Floating Action Button */}
       <TouchableOpacity 
         style={styles.fab}
-        onPress={() => navigation.navigate('Map')}
+        onPress={() => navigation.navigate('Accueil')}
       >
         <Ionicons name="list" size={24} color={COLORS.white} />
       </TouchableOpacity>
