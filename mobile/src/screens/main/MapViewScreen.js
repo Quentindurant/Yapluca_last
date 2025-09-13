@@ -10,6 +10,7 @@ import {
   ScrollView,
   FlatList,
   Image,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -142,24 +143,26 @@ export default function MapViewScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Image 
-            source={require('../../../assets/logo-removebg-preview.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <TouchableOpacity 
-            style={styles.locationButton}
-            onPress={() => Alert.alert('Position', `Lat: ${location?.latitude?.toFixed(4)}, Lng: ${location?.longitude?.toFixed(4)}`)}
-          >
-            <Ionicons name="locate" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Image 
+              source={require('../../../assets/logo-removebg-preview.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <TouchableOpacity 
+              style={styles.locationButton}
+              onPress={() => Alert.alert('Position', `Lat: ${location?.latitude?.toFixed(4)}, Lng: ${location?.longitude?.toFixed(4)}`)}
+            >
+              <Ionicons name="locate" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.headerSubtitle}>Carte des bornes</Text>
         </View>
-        <Text style={styles.headerSubtitle}>Carte des bornes</Text>
-      </View>
 
       {/* Map Placeholder */}
       <View style={styles.mapPlaceholder}>
@@ -258,21 +261,32 @@ export default function MapViewScreen({ navigation, route }) {
       >
         <Ionicons name="list" size={24} color={COLORS.white} />
       </TouchableOpacity>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  safeArea: {
+    flex: 1,
     backgroundColor: COLORS.background,
   },
   header: {
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    elevation: 2,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   headerContent: {
     flexDirection: 'row',
@@ -296,7 +310,7 @@ const styles = StyleSheet.create({
   mapPlaceholder: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    margin: SPACING.lg,
+    margin: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
     justifyContent: 'center',
     alignItems: 'center',
@@ -518,7 +532,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: SPACING.lg,
-    bottom: 120,
+    bottom: 100,
     width: 56,
     height: 56,
     borderRadius: 28,

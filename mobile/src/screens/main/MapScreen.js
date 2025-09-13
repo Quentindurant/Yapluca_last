@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   Image,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -156,27 +157,29 @@ export default function MapScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Image 
-            source={require('../../../assets/logo-removebg-preview.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-            <View style={styles.userAvatar}>
-              <Text style={styles.avatarText}>
-                {userData?.name ? userData.name.charAt(0).toUpperCase() : userData?.email?.charAt(0).toUpperCase() || 'U'}
-              </Text>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Image 
+              source={require('../../../assets/logo-removebg-preview.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.notificationButton}>
+                <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+              <View style={styles.userAvatar}>
+                <Text style={styles.avatarText}>
+                  {userData?.name ? userData.name.charAt(0).toUpperCase() : userData?.email?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
-      </View>
 
       {/* Location Info */}
       <View style={styles.locationContainer}>
@@ -244,25 +247,41 @@ export default function MapScreen({ navigation }) {
         </ScrollView>
       </View>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab}>
-        <Ionicons name="navigate" size={24} color={COLORS.white} />
-      </TouchableOpacity>
-    </SafeAreaView>
+        {/* Floating Action Button */}
+        <TouchableOpacity style={styles.fab}>
+          <Ionicons name="navigate" size={24} color={COLORS.white} />
+        </TouchableOpacity>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  safeArea: {
+    flex: 1,
     backgroundColor: COLORS.background,
   },
   header: {
+    backgroundColor: COLORS.white,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    elevation: 2,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
   },
   logo: {
     height: 32,
@@ -381,10 +400,15 @@ const styles = StyleSheet.create({
   },
   stationCard: {
     backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    marginRight: SPACING.md,
-    width: 300,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
+    elevation: 2,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -409,7 +433,6 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.md,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: SPACING.xs,
   },
   stationAddress: {
     fontSize: FONTS.sizes.sm,
@@ -469,7 +492,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: SPACING.lg,
-    bottom: 120,
+    bottom: 100,
     width: 56,
     height: 56,
     borderRadius: 28,
