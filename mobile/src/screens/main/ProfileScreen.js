@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 const mockUser = {
@@ -37,6 +38,7 @@ const mockRentalHistory = [
 
 export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const { user, userData, logout } = useAuth();
 
   const handleLogout = () => {
     Alert.alert(
@@ -44,9 +46,8 @@ export default function ProfileScreen() {
       'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Déconnecter', style: 'destructive', onPress: () => {
-          // TODO: Implement logout logic
-          console.log('Logout');
+        { text: 'Déconnecter', style: 'destructive', onPress: async () => {
+          await logout();
         }}
       ]
     );
@@ -104,18 +105,20 @@ export default function ProfileScreen() {
         {/* User Info */}
         <View style={styles.userInfo}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>MD</Text>
+            <Text style={styles.avatarText}>
+              {userData?.name ? userData.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || 'U'}
+            </Text>
             <View style={styles.onlineIndicator} />
           </View>
-          <Text style={styles.userName}>{mockUser.name}</Text>
-          <Text style={styles.userEmail}>{mockUser.email}</Text>
+          <Text style={styles.userName}>{userData?.name || user?.displayName || 'Utilisateur'}</Text>
+          <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
           <View style={styles.userStats}>
             <View style={styles.statItem}>
               <Ionicons name="star" size={16} color={COLORS.warning} />
-              <Text style={styles.statValue}>{mockUser.rating}</Text>
+              <Text style={styles.statValue}>{userData?.profile?.rating || 5.0}</Text>
             </View>
             <Text style={styles.statSeparator}>•</Text>
-            <Text style={styles.statText}>{mockUser.locations} locations</Text>
+            <Text style={styles.statText}>{userData?.profile?.totalRentals || 0} locations</Text>
           </View>
         </View>
 
@@ -124,19 +127,19 @@ export default function ProfileScreen() {
           <ProfileItem
             icon="person-outline"
             label="Nom complet"
-            value={mockUser.name}
+            value={userData?.name || user?.displayName || 'Non renseigné'}
             onPress={() => {}}
           />
           <ProfileItem
             icon="mail-outline"
             label="Email"
-            value={mockUser.email}
+            value={user?.email || 'Non renseigné'}
             onPress={() => {}}
           />
           <ProfileItem
             icon="call-outline"
             label="Téléphone"
-            value={mockUser.phone}
+            value={userData?.phone || 'Non renseigné'}
             onPress={() => {}}
           />
         </ProfileSection>

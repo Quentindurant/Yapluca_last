@@ -11,18 +11,22 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
 
-  const handleRegister = () => {
-    if (!email || !password || !confirmPassword) {
+  const handleRegister = async () => {
+    if (!email || !password || !confirmPassword || !name) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
     }
@@ -34,8 +38,14 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Erreur', 'Veuillez accepter les conditions d\'utilisation');
       return;
     }
-    // TODO: Implement actual registration logic
-    console.log('Register attempt:', { email, password });
+
+    setLoading(true);
+    const result = await register(email, password, { name });
+    setLoading(false);
+
+    if (!result.success) {
+      Alert.alert('Erreur d\'inscription', result.error);
+    }
   };
 
   return (
@@ -65,6 +75,23 @@ export default function RegisterScreen({ navigation }) {
 
           {/* Form */}
           <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Nom complet</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Votre nom complet"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+              <Ionicons 
+                name="person-outline" 
+                size={20} 
+                color={COLORS.gray.medium} 
+                style={styles.inputIcon}
+              />
+            </View>
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
@@ -146,8 +173,14 @@ export default function RegisterScreen({ navigation }) {
             </View>
 
             {/* Register Button */}
-            <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-              <Text style={styles.registerButtonText}>Créer mon compte</Text>
+            <TouchableOpacity 
+              style={[styles.registerButton, loading && styles.registerButtonDisabled]} 
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              <Text style={styles.registerButtonText}>
+                {loading ? 'Création...' : 'Créer mon compte'}
+              </Text>
             </TouchableOpacity>
 
             {/* Login Link */}
@@ -281,6 +314,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: FONTS.sizes.md,
     fontWeight: '600',
+  },
+  registerButtonDisabled: {
+    opacity: 0.6,
   },
   loginContainer: {
     flexDirection: 'row',

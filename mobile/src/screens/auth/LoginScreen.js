@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 export default function LoginScreen({ navigation }) {
@@ -18,8 +19,10 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
@@ -28,8 +31,14 @@ export default function LoginScreen({ navigation }) {
       Alert.alert('Erreur', 'Veuillez accepter les conditions d\'utilisation');
       return;
     }
-    // TODO: Implement actual login logic
-    console.log('Login attempt:', { email, password });
+
+    setLoading(true);
+    const result = await login(email, password);
+    setLoading(false);
+
+    if (!result.success) {
+      Alert.alert('Erreur de connexion', result.error);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -127,8 +136,14 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
 
             {/* Login Button */}
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>Se connecter</Text>
+            <TouchableOpacity 
+              style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              <Text style={styles.loginButtonText}>
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </Text>
             </TouchableOpacity>
 
             {/* Divider */}
@@ -280,6 +295,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: FONTS.sizes.md,
     fontWeight: '600',
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
   },
   divider: {
     textAlign: 'center',

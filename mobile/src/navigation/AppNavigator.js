@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -50,8 +51,11 @@ function MainTabNavigator() {
 }
 
 export default function AppNavigator() {
-  // In a real app, you would check authentication state here
-  const isAuthenticated = false;
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return null; // You could add a loading screen here
+  }
 
   return (
     <NavigationContainer>

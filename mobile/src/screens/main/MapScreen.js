@@ -9,46 +9,20 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+// import MapView, { Marker } from 'expo-maps'; // Temporarily disabled
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useAuth } from '../../context/AuthContext';
+import { chargingStationAPI } from '../../services/api';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
-
-// Mock data for charging stations
-const mockStations = [
-  {
-    id: '1',
-    name: 'Station République #001',
-    address: '85 Rue de la République',
-    distance: '150m',
-    available: 3,
-    inUse: 1,
-    rating: 4.8,
-    coordinate: {
-      latitude: 48.8566,
-      longitude: 2.3522,
-    },
-  },
-  {
-    id: '2',
-    name: 'Station Bastille #002',
-    address: '12 Place de la Bastille',
-    distance: '200m',
-    available: 2,
-    inUse: 0,
-    rating: 4.5,
-    coordinate: {
-      latitude: 48.8532,
-      longitude: 2.3692,
-    },
-  },
-];
 
 export default function MapScreen({ navigation }) {
   const [location, setLocation] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStation, setSelectedStation] = useState(null);
-  const [nearbyStations, setNearbyStations] = useState(mockStations);
+  const [nearbyStations, setNearbyStations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { userData } = useAuth();
 
   useEffect(() => {
     getCurrentLocation();
@@ -63,14 +37,71 @@ export default function MapScreen({ navigation }) {
       }
 
       let currentLocation = await Location.getCurrentPositionAsync({});
-      setLocation({
+      const locationData = {
         latitude: currentLocation.coords.latitude,
         longitude: currentLocation.coords.longitude,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
-      });
+      };
+      setLocation(locationData);
+      
+      // Load nearby stations
+      await loadNearbyStations(locationData.latitude, locationData.longitude);
     } catch (error) {
       console.error('Error getting location:', error);
+    }
+  };
+
+  const loadNearbyStations = async (latitude, longitude) => {
+    try {
+      setLoading(true);
+      const response = await chargingStationAPI.getNearbyStations(latitude, longitude);
+      
+      if (response.code === 0 && response.data) {
+        // Transform API data to match our UI format
+        const transformedStations = response.data.map((station) => ({
+          id: station.shop.id,
+          name: station.shop.name,
+          address: station.shop.address,
+          distance: calculateDistance(latitude, longitude, parseFloat(station.shop.latitude), parseFloat(station.shop.longitude)),
+          available: station.cabinet.emptySlots,
+          inUse: station.cabinet.busySlots,
+          rating: 4.5, // Default rating since not provided by API
+          coordinate: {
+            latitude: parseFloat(station.shop.latitude),
+            longitude: parseFloat(station.shop.longitude),
+          },
+          priceStrategy: station.priceStrategy,
+          batteries: station.batteries,
+          cabinet: station.cabinet,
+          shop: station.shop
+        }));
+        
+        setNearbyStations(transformedStations);
+      }
+    } catch (error) {
+      console.error('Error loading nearby stations:', error);
+      Alert.alert('Erreur', 'Impossible de charger les bornes à proximité');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    
+    if (distance < 1) {
+      return `${Math.round(distance * 1000)}m`;
+    } else {
+      return `${distance.toFixed(1)}km`;
     }
   };
 
@@ -134,7 +165,9 @@ export default function MapScreen({ navigation }) {
             <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <View style={styles.profileButton}>
-            <Text style={styles.profileInitial}>M</Text>
+            <Text style={styles.profileInitial}>
+              {userData?.name ? userData.name.charAt(0).toUpperCase() : 'U'}
+            </Text>
           </View>
         </View>
       </View>
@@ -151,51 +184,32 @@ export default function MapScreen({ navigation }) {
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
         <View style={[styles.statCard, { backgroundColor: '#E8F5F3' }]}>
-          <Text style={styles.statNumber}>12</Text>
+          <Text style={styles.statNumber}>{nearbyStations.length}</Text>
           <Text style={styles.statLabel}>À proximité</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: '#E8F0FF' }]}>
-          <Text style={styles.statNumber}>8</Text>
+          <Text style={styles.statNumber}>
+            {nearbyStations.reduce((sum, station) => sum + station.available, 0)}
+          </Text>
           <Text style={styles.statLabel}>Disponibles</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: '#FFF0E8' }]}>
-          <Text style={styles.statNumber}>3</Text>
+          <Text style={styles.statNumber}>
+            {userData?.profile?.favoriteStations?.length || 0}
+          </Text>
           <Text style={styles.statLabel}>Favorités</Text>
         </View>
       </View>
 
-      {/* Map or Search */}
-      <View style={styles.mapContainer}>
-        {location ? (
-          <MapView
-            style={styles.map}
-            initialRegion={location}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-          >
-            {nearbyStations.map((station) => (
-              <Marker
-                key={station.id}
-                coordinate={station.coordinate}
-                onPress={() => handleStationPress(station)}
-              >
-                <View style={styles.markerContainer}>
-                  <Ionicons name="battery-charging" size={20} color={COLORS.primary} />
-                </View>
-              </Marker>
-            ))}
-          </MapView>
-        ) : (
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher une borne..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            <Ionicons name="search" size={20} color={COLORS.gray.medium} style={styles.searchIcon} />
-          </View>
-        )}
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Rechercher une borne..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <Ionicons name="search" size={20} color={COLORS.gray.medium} style={styles.searchIcon} />
       </View>
 
       {/* Nearby Stations */}
@@ -208,9 +222,19 @@ export default function MapScreen({ navigation }) {
         </View>
         
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {nearbyStations.map((station) => (
-            <StationCard key={station.id} station={station} />
-          ))}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Chargement des bornes...</Text>
+            </View>
+          ) : nearbyStations.length > 0 ? (
+            nearbyStations.map((station) => (
+              <StationCard key={station.id} station={station} />
+            ))
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Aucune borne trouvée à proximité</Text>
+            </View>
+          )}
         </ScrollView>
       </View>
 
@@ -298,26 +322,15 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
-  mapContainer: {
-    height: 200,
-    marginHorizontal: SPACING.lg,
-    borderRadius: BORDER_RADIUS.md,
-    overflow: 'hidden',
-    marginBottom: SPACING.lg,
-  },
-  map: {
-    flex: 1,
-  },
   searchContainer: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
     position: 'relative',
   },
   searchInput: {
-    width: '80%',
+    width: '100%',
     padding: SPACING.md,
+    paddingRight: 50,
     backgroundColor: COLORS.white,
     borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
@@ -325,7 +338,14 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     position: 'absolute',
-    right: '15%',
+    right: SPACING.md,
+    top: SPACING.md,
+  },
+  mapPlaceholder: {
+    textAlign: 'center',
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.lg,
   },
   markerContainer: {
     backgroundColor: COLORS.white,
@@ -456,5 +476,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  loadingContainer: {
+    padding: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 200,
+  },
+  loadingText: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
+  },
+  emptyContainer: {
+    padding: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 250,
+  },
+  emptyText: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
 });
