@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  ScrollView,
+  FlatList,
 } from 'react-native';
-import { ExpoMap } from 'expo-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuth } from '../../context/AuthContext';
@@ -19,10 +20,7 @@ export default function MapViewScreen({ navigation, route }) {
   const [location, setLocation] = useState(null);
   const [nearbyStations, setNearbyStations] = useState([]);
   const [selectedStation, setSelectedStation] = useState(null);
-  const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showRoute, setShowRoute] = useState(false);
-  const mapRef = useRef(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -96,48 +94,11 @@ export default function MapViewScreen({ navigation, route }) {
     return Math.round(distance * 1000); // Distance in meters
   };
 
-  const showRouteToStation = async (station) => {
-    if (!location) return;
-
-    try {
-      setLoading(true);
-      const directions = await openRouteServiceAPI.getDirections(
-        [location.longitude, location.latitude],
-        [station.coordinate.longitude, station.coordinate.latitude]
-      );
-
-      if (directions && directions.features && directions.features[0]) {
-        const coordinates = directions.features[0].geometry.coordinates.map(coord => ({
-          latitude: coord[1],
-          longitude: coord[0],
-        }));
-        
-        setRouteCoordinates(coordinates);
-        setShowRoute(true);
-        setSelectedStation(station);
-
-        // Animate to show route
-        if (mapRef.current) {
-          mapRef.current.animateCamera({
-            center: {
-              latitude: (location.latitude + station.coordinate.latitude) / 2,
-              longitude: (location.longitude + station.coordinate.longitude) / 2,
-            },
-            zoom: 13,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error getting directions:', error);
-      Alert.alert('Erreur', 'Impossible de calculer l\'itinéraire');
-    } finally {
-      setLoading(false);
-    }
+  const selectStation = (station) => {
+    setSelectedStation(station);
   };
 
-  const clearRoute = () => {
-    setRouteCoordinates([]);
-    setShowRoute(false);
+  const clearSelection = () => {
     setSelectedStation(null);
   };
 
@@ -145,15 +106,26 @@ export default function MapViewScreen({ navigation, route }) {
     navigation.navigate('StationDetail', { station });
   };
 
-  const centerOnUser = () => {
-    if (location && mapRef.current) {
-      mapRef.current.animateCamera({
-        center: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-        },
-        zoom: 15,
-      });
+  const getDirectionsToStation = async (station) => {
+    if (!location) return;
+
+    try {
+      Alert.alert(
+        'Navigation',
+        `Ouvrir l'itinéraire vers ${station.name} dans votre app de navigation ?`,
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { 
+            text: 'Ouvrir', 
+            onPress: () => {
+              // This would open external navigation app
+              console.log('Opening navigation to:', station.name);
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error with navigation:', error);
     }
   };
 
@@ -180,103 +152,102 @@ export default function MapViewScreen({ navigation, route }) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Carte des bornes</Text>
         <TouchableOpacity 
-          style={styles.centerButton}
-          onPress={centerOnUser}
+          style={styles.locationButton}
+          onPress={() => Alert.alert('Position', `Lat: ${location?.latitude?.toFixed(4)}, Lng: ${location?.longitude?.toFixed(4)}`)}
         >
           <Ionicons name="locate" size={24} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Map */}
-      {location && (
-        <ExpoMap
-          ref={mapRef}
-          style={styles.map}
-          initialCameraPosition={{
-            target: {
-              latitude: location.latitude,
-              longitude: location.longitude,
-            },
-            zoom: 15,
-          }}
-          showsUserLocation={true}
-          onMapPress={() => clearRoute()}
-        >
-          {/* Station Markers */}
-          {nearbyStations.map((station) => (
-            <ExpoMap.Marker
-              key={station.id}
-              coordinate={{
-                latitude: station.coordinate.latitude,
-                longitude: station.coordinate.longitude,
-              }}
-              title={station.name}
-              snippet={`${station.available} bornes disponibles`}
-              onPress={() => showRouteToStation(station)}
-            />
-          ))}
+      {/* Map Placeholder */}
+      <View style={styles.mapPlaceholder}>
+        <View style={styles.mapHeader}>
+          <Ionicons name="map" size={48} color={COLORS.primary} />
+          <Text style={styles.mapTitle}>Vue Carte Interactive</Text>
+          <Text style={styles.mapSubtitle}>
+            Fonctionnalité disponible avec un build de développement
+          </Text>
+        </View>
+        
+        {location && (
+          <View style={styles.locationInfo}>
+            <Text style={styles.locationText}>
+              📍 Position actuelle: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+            </Text>
+            <Text style={styles.stationCount}>
+              🔋 {nearbyStations.length} bornes trouvées à proximité
+            </Text>
+          </View>
+        )}
+      </View>
 
-          {/* Route Polyline */}
-          {showRoute && routeCoordinates.length > 0 && (
-            <ExpoMap.Polyline
-              coordinates={routeCoordinates}
-              strokeColor={COLORS.primary}
-              strokeWidth={4}
-            />
-          )}
-        </ExpoMap>
-      )}
-
-      {/* Selected Station Info */}
-      {selectedStation && (
-        <View style={styles.stationInfo}>
-          <View style={styles.stationHeader}>
-            <View style={styles.stationDetails}>
-              <Text style={styles.stationName}>{selectedStation.name}</Text>
-              <Text style={styles.stationAddress}>{selectedStation.address}</Text>
-              <View style={styles.stationStats}>
-                <View style={styles.statItem}>
-                  <Ionicons name="battery-charging" size={16} color={COLORS.success} />
-                  <Text style={styles.statText}>{selectedStation.available} disponibles</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons name="location" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.statText}>
-                    {calculateDistance(
-                      location.latitude, 
+      {/* Stations List */}
+      <ScrollView style={styles.stationsList}>
+        <Text style={styles.listTitle}>Bornes à proximité</Text>
+        {nearbyStations.map((station) => (
+          <TouchableOpacity
+            key={station.id}
+            style={[
+              styles.stationCard,
+              selectedStation?.id === station.id && styles.selectedStationCard
+            ]}
+            onPress={() => selectStation(station)}
+          >
+            <View style={styles.stationCardHeader}>
+              <View style={styles.stationIcon}>
+                <Ionicons 
+                  name="battery-charging" 
+                  size={24} 
+                  color={station.available > 0 ? COLORS.success : COLORS.error} 
+                />
+              </View>
+              <View style={styles.stationCardInfo}>
+                <Text style={styles.stationCardName}>{station.name}</Text>
+                <Text style={styles.stationCardAddress}>{station.address}</Text>
+                <View style={styles.stationCardStats}>
+                  <Text style={styles.availableText}>
+                    {station.available} disponibles
+                  </Text>
+                  <Text style={styles.distanceText}>
+                    {location ? calculateDistance(
+                      location.latitude,
                       location.longitude,
-                      selectedStation.coordinate.latitude,
-                      selectedStation.coordinate.longitude
-                    )}m
+                      station.coordinate.latitude,
+                      station.coordinate.longitude
+                    ) : 0}m
                   </Text>
                 </View>
               </View>
+              <TouchableOpacity
+                style={styles.navigationIcon}
+                onPress={() => getDirectionsToStation(station)}
+              >
+                <Ionicons name="navigate" size={20} color={COLORS.primary} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={clearRoute}
-            >
-              <Ionicons name="close" size={24} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.detailButton}
-              onPress={() => goToStationDetail(selectedStation)}
-            >
-              <Text style={styles.detailButtonText}>Voir détails</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.routeButton}
-              onPress={() => showRouteToStation(selectedStation)}
-            >
-              <Ionicons name="navigate" size={16} color={COLORS.white} />
-              <Text style={styles.routeButtonText}>Itinéraire</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+            
+            {selectedStation?.id === station.id && (
+              <View style={styles.expandedInfo}>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    style={styles.detailButton}
+                    onPress={() => goToStationDetail(station)}
+                  >
+                    <Text style={styles.detailButtonText}>Voir détails</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.routeButton}
+                    onPress={() => getDirectionsToStation(station)}
+                  >
+                    <Ionicons name="navigate" size={16} color={COLORS.white} />
+                    <Text style={styles.routeButtonText}>Itinéraire</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       {/* Floating Action Button */}
       <TouchableOpacity 
@@ -314,11 +285,121 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
-  centerButton: {
+  locationButton: {
     padding: SPACING.sm,
   },
-  map: {
+  mapPlaceholder: {
     flex: 1,
+    backgroundColor: COLORS.surface,
+    margin: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  mapHeader: {
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
+  },
+  mapTitle: {
+    fontSize: FONTS.sizes.xl,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginTop: SPACING.md,
+    textAlign: 'center',
+  },
+  mapSubtitle: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.sm,
+  },
+  locationInfo: {
+    backgroundColor: COLORS.white,
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  locationText: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+  },
+  stationCount: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  stationsList: {
+    flex: 1,
+    paddingHorizontal: SPACING.lg,
+  },
+  listTitle: {
+    fontSize: FONTS.sizes.lg,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+  },
+  stationCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  selectedStationCard: {
+    borderColor: COLORS.primary,
+    borderWidth: 2,
+  },
+  stationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stationIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.md,
+  },
+  stationCardInfo: {
+    flex: 1,
+  },
+  stationCardName: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  stationCardAddress: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+  },
+  stationCardStats: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+  },
+  availableText: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.success,
+    fontWeight: '500',
+  },
+  distanceText: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+  },
+  navigationIcon: {
+    padding: SPACING.sm,
+  },
+  expandedInfo: {
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
   loadingContainer: {
     flex: 1,
