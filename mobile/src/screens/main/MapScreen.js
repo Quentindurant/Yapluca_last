@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
+  ScrollView,
   TouchableOpacity,
   TextInput,
-  ScrollView,
   Alert,
+  Image,
 } from 'react-native';
-// import MapView, { Marker } from 'expo-maps'; // Temporarily disabled
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuth } from '../../context/AuthContext';
@@ -159,15 +159,21 @@ export default function MapScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>YapluCa</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-          <View style={styles.profileButton}>
-            <Text style={styles.profileInitial}>
-              {userData?.name ? userData.name.charAt(0).toUpperCase() : 'U'}
-            </Text>
+        <View style={styles.headerTop}>
+          <Image 
+            source={require('../../../assets/logo-removebg-preview.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Ionicons name="notifications-outline" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <View style={styles.userAvatar}>
+              <Text style={styles.avatarText}>
+                {userData?.name ? userData.name.charAt(0).toUpperCase() : userData?.email?.charAt(0).toUpperCase() || 'U'}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -259,9 +265,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
   },
   logo: {
-    fontSize: FONTS.sizes.xl,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    height: 32,
+    width: 120,
   },
   headerRight: {
     flexDirection: 'row',
@@ -464,7 +469,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: SPACING.lg,
-    bottom: 100,
+    bottom: 120,
     width: 56,
     height: 56,
     borderRadius: 28,

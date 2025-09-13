@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
   FlatList,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -144,19 +145,20 @@ export default function MapViewScreen({ navigation, route }) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Carte des bornes</Text>
-        <TouchableOpacity 
-          style={styles.locationButton}
-          onPress={() => Alert.alert('Position', `Lat: ${location?.latitude?.toFixed(4)}, Lng: ${location?.longitude?.toFixed(4)}`)}
-        >
-          <Ionicons name="locate" size={24} color={COLORS.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Image 
+            source={require('../../../assets/logo-removebg-preview.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <TouchableOpacity 
+            style={styles.locationButton}
+            onPress={() => Alert.alert('Position', `Lat: ${location?.latitude?.toFixed(4)}, Lng: ${location?.longitude?.toFixed(4)}`)}
+          >
+            <Ionicons name="locate" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.headerSubtitle}>Carte des bornes</Text>
       </View>
 
       {/* Map Placeholder */}
@@ -266,23 +268,26 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  backButton: {
-    padding: SPACING.sm,
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.xs,
   },
-  headerTitle: {
+  logo: {
+    height: 28,
+    width: 100,
+  },
+  headerSubtitle: {
     fontSize: FONTS.sizes.lg,
     fontWeight: '600',
     color: COLORS.text,
-    flex: 1,
     textAlign: 'center',
   },
   locationButton: {
@@ -513,7 +518,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: SPACING.lg,
-    bottom: 100,
+    bottom: 120,
     width: 56,
     height: 56,
     borderRadius: 28,
