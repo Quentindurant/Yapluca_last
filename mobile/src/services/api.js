@@ -37,26 +37,24 @@ export const chargingStationAPI = {
     }
   },
 
-  // Get nearby stations (mock implementation - replace with real endpoint)
+  // Get nearby stations (currently using mock data - replace with real endpoint when available)
   getNearbyStations: async (latitude, longitude, radius = 5000) => {
     try {
       // This would be the real API call when available
       // const response = await api.get(`/stations/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`);
       
-      // For now, return mock data with real API structure
-      return {
-        code: 0,
-        msg: "success",
-        data: [
-          {
-            shop: {
-              id: "BJD60151",
-              name: "Station République #001",
-              address: "85 Rue de la République, 75011 Paris",
-              city: "Paris",
-              province: "Île-de-France",
-              latitude: "48.8566",
-              longitude: "2.3522",
+      // IMPORTANT: Currently using mock data with realistic coordinates around user location
+      // Generate stations near the user's actual location
+      const mockStations = [
+        {
+          shop: {
+            id: "BJD60151",
+            name: "Station République #001",
+            address: "85 Rue de la République, 75011 Paris",
+            city: "Paris",
+            province: "Île-de-France",
+            latitude: (latitude + 0.002).toString(),
+            longitude: (longitude + 0.001).toString(),
               openingTime: "24/7",
               price: 2.5,
               deposit: 20,
@@ -89,17 +87,17 @@ export const chargingStationAPI = {
           {
             shop: {
               id: "BJD60152",
-              name: "Station Bastille #002",
-              address: "12 Place de la Bastille, 75011 Paris",
-              city: "Paris",
-              province: "Île-de-France",
-              latitude: "48.8532",
-              longitude: "2.3692",
+              name: "Station Centre #002",
+              address: "12 Avenue des Champs, Centre-ville",
+              city: "Local",
+              province: "Region",
+              latitude: (latitude - 0.003).toString(),
+              longitude: (longitude + 0.002).toString(),
               openingTime: "24/7",
-              price: 1.5,
+              price: 2.0,
               deposit: 20,
               freeMinutes: 5,
-              dailyMaxPrice: 10
+              dailyMaxPrice: 12
             },
             cabinet: {
               id: "BJD60152",
@@ -111,19 +109,24 @@ export const chargingStationAPI = {
             },
             batteries: [
               { slotNum: 1, vol: 92, batteryId: "BAT004" },
-              { slotNum: 2, vol: 67, batteryId: "BAT005" }
+              { slotNum: 2, vol: 88, batteryId: "BAT005" }
             ],
             priceStrategy: {
-              price: 1.5,
-              priceMinute: 0.03,
+              price: 2.0,
+              priceMinute: 0.04,
               depositAmount: 20,
               freeMinutes: 5,
-              dailyMaxPrice: 10,
+              dailyMaxPrice: 12,
               currency: "EUR",
               currencySymbol: "€"
             }
           }
-        ]
+      ];
+
+      return {
+        code: 0,
+        msg: "success",
+        data: mockStations
       };
     } catch (error) {
       console.error('Error fetching nearby stations:', error);

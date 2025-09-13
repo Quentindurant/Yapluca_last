@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
-  TouchableOpacity,
   ScrollView,
+  TouchableOpacity,
+  Image,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
+import { chargeNowAPI } from '../../services/api';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 const batteryTypes = [
@@ -37,12 +40,14 @@ const batteryTypes = [
 export default function StationDetailScreen({ navigation, route }) {
   const { station } = route.params;
   const [selectedBattery, setSelectedBattery] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
   const handleSelectBattery = (battery) => {
     setSelectedBattery(battery);
   };
 
-  const handleRentBattery = () => {
+  const handleRentBattery = async () => {
     if (!selectedBattery) {
       Alert.alert('Sélection requise', 'Veuillez sélectionner une batterie');
       return;
@@ -55,10 +60,29 @@ export default function StationDetailScreen({ navigation, route }) {
         { text: 'Annuler', style: 'cancel' },
         { 
           text: 'Confirmer', 
-          onPress: () => {
-            // TODO: Implement rental logic
-            Alert.alert('Succès', 'Batterie louée avec succès !');
-            navigation.goBack();
+          onPress: async () => {
+            setLoading(true);
+            try {
+              // Create rental order with ChargeNow API
+              const orderData = {
+                stationId: station.id,
+                batteryType: selectedBattery.id,
+                userId: user?.uid,
+                price: selectedBattery.price,
+                duration: '1 day'
+              };
+              
+              const result = await chargeNowAPI.createRentOrder(orderData);
+              
+              Alert.alert('Succès', 'Batterie louée avec succès !', [
+                { text: 'OK', onPress: () => navigation.goBack() }
+              ]);
+            } catch (error) {
+              console.error('Rental error:', error);
+              Alert.alert('Erreur', 'Impossible de louer la batterie. Veuillez réessayer.');
+            } finally {
+              setLoading(false);
+            }
           }
         }
       ]
@@ -173,8 +197,14 @@ export default function StationDetailScreen({ navigation, route }) {
             <Text style={styles.selectedBatteryName}>{selectedBattery.name}</Text>
             <Text style={styles.selectedBatteryPrice}>{selectedBattery.price}</Text>
           </View>
-          <TouchableOpacity style={styles.rentButton} onPress={handleRentBattery}>
-            <Text style={styles.rentButtonText}>Louer maintenant</Text>
+          <TouchableOpacity 
+            style={[styles.rentButton, loading && styles.rentButtonDisabled]} 
+            onPress={handleRentBattery}
+            disabled={loading}
+          >
+            <Text style={styles.rentButtonText}>
+              {loading ? 'Location en cours...' : 'Louer maintenant'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -399,5 +429,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: FONTS.sizes.md,
     fontWeight: '600',
+  },
+  rentButtonDisabled: {
+    backgroundColor: COLORS.textSecondary,
+    opacity: 0.7,
   },
 });

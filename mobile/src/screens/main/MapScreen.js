@@ -216,7 +216,7 @@ export default function MapScreen({ navigation }) {
       <View style={styles.nearbyContainer}>
         <View style={styles.nearbyHeader}>
           <Text style={styles.nearbyTitle}>Bornes à proximité</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('MapView')}>
             <Text style={styles.seeAllText}>Voir carte</Text>
           </TouchableOpacity>
         </View>
