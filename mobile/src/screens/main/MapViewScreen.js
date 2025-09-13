@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { ExpoMap } from 'expo-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuth } from '../../context/AuthContext';
@@ -116,14 +116,14 @@ export default function MapViewScreen({ navigation, route }) {
         setShowRoute(true);
         setSelectedStation(station);
 
-        // Fit map to show route
+        // Animate to show route
         if (mapRef.current) {
-          mapRef.current.fitToCoordinates([
-            location,
-            station.coordinate
-          ], {
-            edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-            animated: true,
+          mapRef.current.animateCamera({
+            center: {
+              latitude: (location.latitude + station.coordinate.latitude) / 2,
+              longitude: (location.longitude + station.coordinate.longitude) / 2,
+            },
+            zoom: 13,
           });
         }
       }
@@ -147,7 +147,13 @@ export default function MapViewScreen({ navigation, route }) {
 
   const centerOnUser = () => {
     if (location && mapRef.current) {
-      mapRef.current.animateToRegion(location, 1000);
+      mapRef.current.animateCamera({
+        center: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        zoom: 15,
+      });
     }
   };
 
@@ -183,54 +189,42 @@ export default function MapViewScreen({ navigation, route }) {
 
       {/* Map */}
       {location && (
-        <MapView
+        <ExpoMap
           ref={mapRef}
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={location}
+          initialCameraPosition={{
+            target: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+            },
+            zoom: 15,
+          }}
           showsUserLocation={true}
-          showsMyLocationButton={false}
+          onMapPress={() => clearRoute()}
         >
-          {/* User Location Marker */}
-          <Marker
-            coordinate={location}
-            title="Ma position"
-            pinColor={COLORS.primary}
-          />
-
           {/* Station Markers */}
           {nearbyStations.map((station) => (
-            <Marker
+            <ExpoMap.Marker
               key={station.id}
-              coordinate={station.coordinate}
+              coordinate={{
+                latitude: station.coordinate.latitude,
+                longitude: station.coordinate.longitude,
+              }}
               title={station.name}
-              description={`${station.available} bornes disponibles`}
+              snippet={`${station.available} bornes disponibles`}
               onPress={() => showRouteToStation(station)}
-            >
-              <View style={[
-                styles.stationMarker,
-                selectedStation?.id === station.id && styles.selectedMarker
-              ]}>
-                <Ionicons 
-                  name="battery-charging" 
-                  size={20} 
-                  color={station.available > 0 ? COLORS.success : COLORS.error} 
-                />
-                <Text style={styles.markerText}>{station.available}</Text>
-              </View>
-            </Marker>
+            />
           ))}
 
           {/* Route Polyline */}
           {showRoute && routeCoordinates.length > 0 && (
-            <Polyline
+            <ExpoMap.Polyline
               coordinates={routeCoordinates}
               strokeColor={COLORS.primary}
               strokeWidth={4}
-              lineDashPattern={[5, 5]}
             />
           )}
-        </MapView>
+        </ExpoMap>
       )}
 
       {/* Selected Station Info */}
