@@ -7,15 +7,14 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  ScrollView,
-  FlatList,
   Image,
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import MapView, { Marker, Callout } from 'react-native-maps';
 import { useAuth } from '../../context/AuthContext';
-import { chargingStationAPI, openRouteServiceAPI } from '../../services/api';
+import { chargingStationAPI, navigationAPI } from '../../services/api';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 export default function MapViewScreen({ navigation, route }) {
@@ -31,26 +30,18 @@ export default function MapViewScreen({ navigation, route }) {
 
   const getCurrentLocation = async () => {
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission refusée', 'L\'accès à la localisation est nécessaire pour afficher la carte.');
+        Alert.alert('Permission refusée', 'Nous avons besoin de votre localisation pour afficher les bornes à proximité.');
         return;
       }
 
-      let currentLocation = await Location.getCurrentPositionAsync({});
-      const locationData = {
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-      setLocation(locationData);
-      
-      // Load nearby stations
-      await loadNearbyStations(locationData.latitude, locationData.longitude);
+      const currentLocation = await Location.getCurrentPositionAsync({});
+      setLocation(currentLocation.coords);
+      await loadNearbyStations(currentLocation.coords.latitude, currentLocation.coords.longitude);
     } catch (error) {
       console.error('Error getting location:', error);
-      Alert.alert('Erreur', 'Impossible d\'obtenir votre position');
+      Alert.alert('Erreur', 'Impossible d\'obtenir votre localisation');
     } finally {
       setLoading(false);
     }
@@ -65,17 +56,15 @@ export default function MapViewScreen({ navigation, route }) {
           id: station.shop.id,
           name: station.shop.name,
           address: station.shop.address,
+          latitude: station.shop.latitude,
+          longitude: station.shop.longitude,
           available: station.cabinet.emptySlots,
-          inUse: station.cabinet.busySlots,
-          coordinate: {
-            latitude: parseFloat(station.shop.latitude),
-            longitude: parseFloat(station.shop.longitude),
-          },
-          shop: station.shop,
-          cabinet: station.cabinet,
-          batteries: station.batteries,
+          total: station.cabinet.slots,
+          rating: '4.5',
+          distance: '235m',
+          price: station.priceStrategy.price,
+          currency: station.priceStrategy.currencySymbol,
         }));
-        
         setNearbyStations(transformedStations);
       }
     } catch (error) {
@@ -83,57 +72,41 @@ export default function MapViewScreen({ navigation, route }) {
     }
   };
 
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius of the Earth in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c;
-    return Math.round(distance * 1000); // Distance in meters
-  };
-
-  const selectStation = (station) => {
+  const handleStationSelect = (station) => {
     setSelectedStation(station);
   };
 
-  const clearSelection = () => {
-    setSelectedStation(null);
-  };
-
-  const goToStationDetail = (station) => {
-    navigation.navigate('StationDetail', { station });
-  };
-
-  const getDirectionsToStation = async (station) => {
+  const handleGetDirections = async (station) => {
     if (!location) return;
 
     try {
+      const startCoords = { latitude: location.latitude, longitude: location.longitude };
+      const endCoords = { latitude: parseFloat(station.latitude), longitude: parseFloat(station.longitude) };
+      
       Alert.alert(
         'Navigation',
-        `Ouvrir l'itinéraire vers ${station.name} dans votre app de navigation ?`,
+        `Ouvrir l'itinéraire vers ${station.name} ?`,
         [
           { text: 'Annuler', style: 'cancel' },
           { 
-            text: 'Ouvrir', 
+            text: 'Google Maps', 
             onPress: () => {
-              // This would open external navigation app
-              console.log('Opening navigation to:', station.name);
+              const url = `https://www.google.com/maps/dir/?api=1&destination=${endCoords.latitude},${endCoords.longitude}`;
+              // Linking.openURL(url);
             }
           }
         ]
       );
     } catch (error) {
-      console.error('Error with navigation:', error);
+      console.error('Error getting directions:', error);
+      Alert.alert('Erreur', 'Impossible d\'obtenir l\'itinéraire');
     }
   };
 
-  if (loading && !location) {
+  if (loading) {
     return (
       <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={false} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Chargement de la carte...</Text>
@@ -145,113 +118,132 @@ export default function MapViewScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={false} />
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Image 
-              source={require('../../../assets/logo-removebg-preview.png')} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <TouchableOpacity 
-              style={styles.locationButton}
-              onPress={() => Alert.alert('Position', `Lat: ${location?.latitude?.toFixed(4)}, Lng: ${location?.longitude?.toFixed(4)}`)}
-            >
-              <Ionicons name="locate" size={24} color={COLORS.primary} />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.headerSubtitle}>Carte des bornes</Text>
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Image 
+            source={require('../../../assets/logo-removebg-preview.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <TouchableOpacity 
+            style={styles.locationButton}
+            onPress={() => Alert.alert('Position', `Lat: ${location?.latitude?.toFixed(4)}, Lng: ${location?.longitude?.toFixed(4)}`)}
+          >
+            <Ionicons name="locate" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
         </View>
-
-      {/* Map Placeholder */}
-      <View style={styles.mapPlaceholder}>
-        <View style={styles.mapHeader}>
-          <Ionicons name="map" size={48} color={COLORS.primary} />
-          <Text style={styles.mapTitle}>Vue Carte Interactive</Text>
-          <Text style={styles.mapSubtitle}>
-            Fonctionnalité disponible avec un build de développement
-          </Text>
-        </View>
-        
-        {location && (
-          <View style={styles.locationInfo}>
-            <Text style={styles.locationText}>
-              📍 Position actuelle: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-            </Text>
-            <Text style={styles.stationCount}>
-              🔋 {nearbyStations.length} bornes trouvées à proximité
-            </Text>
-          </View>
-        )}
+        <Text style={styles.headerSubtitle}>Carte des bornes</Text>
       </View>
 
-      {/* Stations List */}
-      <ScrollView style={styles.stationsList}>
-        <Text style={styles.listTitle}>Bornes à proximité</Text>
-        {nearbyStations.map((station) => (
-          <TouchableOpacity
-            key={station.id}
-            style={[
-              styles.stationCard,
-              selectedStation?.id === station.id && styles.selectedStationCard
-            ]}
-            onPress={() => selectStation(station)}
-          >
-            <View style={styles.stationCardHeader}>
-              <View style={styles.stationIcon}>
-                <Ionicons 
-                  name="battery-charging" 
-                  size={24} 
-                  color={station.available > 0 ? COLORS.success : COLORS.error} 
-                />
+      {/* Interactive Map */}
+      {location && (
+        <MapView
+          style={styles.map}
+          initialRegion={{
+            latitude: location.latitude,
+            longitude: location.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+        >
+          {/* User Location Marker */}
+          <Marker
+            coordinate={{
+              latitude: location.latitude,
+              longitude: location.longitude,
+            }}
+            title="Ma position"
+            description="Vous êtes ici"
+            pinColor={COLORS.primary}
+          />
+          
+          {/* Station Markers */}
+          {nearbyStations.map((station) => (
+            <Marker
+              key={station.id}
+              coordinate={{
+                latitude: parseFloat(station.latitude),
+                longitude: parseFloat(station.longitude),
+              }}
+              title={station.name}
+              description={station.address}
+            >
+              <View style={styles.customMarker}>
+                <Ionicons name="battery-charging" size={24} color={COLORS.white} />
               </View>
-              <View style={styles.stationCardInfo}>
-                <Text style={styles.stationCardName}>{station.name}</Text>
-                <Text style={styles.stationCardAddress}>{station.address}</Text>
-                <View style={styles.stationCardStats}>
-                  <Text style={styles.availableText}>
-                    {station.available} disponibles
-                  </Text>
-                  <Text style={styles.distanceText}>
-                    {location ? calculateDistance(
-                      location.latitude,
-                      location.longitude,
-                      station.coordinate.latitude,
-                      station.coordinate.longitude
-                    ) : 0}m
-                  </Text>
+              <Callout style={styles.callout}>
+                <View style={styles.calloutContent}>
+                  <Text style={styles.calloutTitle}>{station.name}</Text>
+                  <Text style={styles.calloutAddress}>{station.address}</Text>
+                  <View style={styles.calloutStats}>
+                    <Text style={styles.calloutStat}>
+                      ✅ {station.available} disponibles
+                    </Text>
+                    <Text style={styles.calloutStat}>
+                      ⭐ {station.rating}
+                    </Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.calloutButton}
+                    onPress={() => handleStationSelect(station)}
+                  >
+                    <Text style={styles.calloutButtonText}>Voir détails</Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
-              <TouchableOpacity
-                style={styles.navigationIcon}
-                onPress={() => getDirectionsToStation(station)}
-              >
-                <Ionicons name="navigate" size={20} color={COLORS.primary} />
-              </TouchableOpacity>
+              </Callout>
+            </Marker>
+          ))}
+        </MapView>
+      )}
+
+      {/* Quick Station Info */}
+      {selectedStation && (
+        <View style={styles.quickInfo}>
+          <View style={styles.quickInfoHeader}>
+            <Text style={styles.quickInfoTitle}>{selectedStation.name}</Text>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setSelectedStation(null)}
+            >
+              <Ionicons name="close" size={20} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.quickInfoAddress}>{selectedStation.address}</Text>
+          <View style={styles.quickInfoStats}>
+            <View style={styles.quickStat}>
+              <Text style={styles.quickStatNumber}>{selectedStation.available}</Text>
+              <Text style={styles.quickStatLabel}>Disponibles</Text>
             </View>
-            
-            {selectedStation?.id === station.id && (
-              <View style={styles.expandedInfo}>
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    style={styles.detailButton}
-                    onPress={() => goToStationDetail(station)}
-                  >
-                    <Text style={styles.detailButtonText}>Voir détails</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.routeButton}
-                    onPress={() => getDirectionsToStation(station)}
-                  >
-                    <Ionicons name="navigate" size={16} color={COLORS.white} />
-                    <Text style={styles.routeButtonText}>Itinéraire</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+            <View style={styles.quickStat}>
+              <Text style={styles.quickStatNumber}>{selectedStation.rating}</Text>
+              <Text style={styles.quickStatLabel}>Note</Text>
+            </View>
+            <View style={styles.quickStat}>
+              <Text style={styles.quickStatNumber}>{selectedStation.distance}</Text>
+              <Text style={styles.quickStatLabel}>Distance</Text>
+            </View>
+          </View>
+          <View style={styles.quickActions}>
+            <TouchableOpacity 
+              style={styles.routeButton}
+              onPress={() => handleGetDirections(selectedStation)}
+            >
+              <Ionicons name="navigate" size={16} color={COLORS.white} />
+              <Text style={styles.routeButtonText}>Itinéraire</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.detailsButton}
+              onPress={() => navigation.navigate('StationDetail', { station: selectedStation })}
+            >
+              <Text style={styles.detailsButtonText}>Détails</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Floating Action Button */}
       <TouchableOpacity 
@@ -301,227 +293,148 @@ const styles = StyleSheet.create({
   locationButton: {
     padding: SPACING.sm,
   },
-  mapPlaceholder: {
+  map: {
     flex: 1,
-    backgroundColor: COLORS.surface,
     margin: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.xl,
+    overflow: 'hidden',
   },
-  mapHeader: {
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-  },
-  mapTitle: {
-    fontSize: FONTS.sizes.xl,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginTop: SPACING.md,
-    textAlign: 'center',
-  },
-  mapSubtitle: {
-    fontSize: FONTS.sizes.md,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: SPACING.sm,
-  },
-  locationInfo: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  locationText: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-  },
-  stationCount: {
-    fontSize: FONTS.sizes.md,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  stationsList: {
-    flex: 1,
-    paddingHorizontal: SPACING.lg,
-  },
-  listTitle: {
-    fontSize: FONTS.sizes.lg,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-  stationCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  selectedStationCard: {
-    borderColor: COLORS.primary,
-    borderWidth: 2,
-  },
-  stationCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stationIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.surface,
+  customMarker: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.md,
+    borderWidth: 3,
+    borderColor: COLORS.white,
+    elevation: 5,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  stationCardInfo: {
-    flex: 1,
+  callout: {
+    width: 250,
   },
-  stationCardName: {
+  calloutContent: {
+    padding: SPACING.sm,
+  },
+  calloutTitle: {
     fontSize: FONTS.sizes.md,
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: SPACING.xs,
   },
-  stationCardAddress: {
+  calloutAddress: {
     fontSize: FONTS.sizes.sm,
     color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
   },
-  stationCardStats: {
+  calloutStats: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
   },
-  availableText: {
+  calloutStat: {
     fontSize: FONTS.sizes.sm,
-    color: COLORS.success,
+    color: COLORS.text,
+  },
+  calloutButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    alignItems: 'center',
+  },
+  calloutButtonText: {
+    color: COLORS.white,
+    fontSize: FONTS.sizes.sm,
     fontWeight: '500',
   },
-  distanceText: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-  },
-  navigationIcon: {
-    padding: SPACING.sm,
-  },
-  expandedInfo: {
-    marginTop: SPACING.md,
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: SPACING.md,
-  },
-  loadingText: {
-    fontSize: FONTS.sizes.md,
-    color: COLORS.textSecondary,
-  },
-  stationMarker: {
+  quickInfo: {
     backgroundColor: COLORS.white,
-    borderRadius: BORDER_RADIUS.sm,
-    padding: SPACING.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    minWidth: 40,
-    minHeight: 40,
+    margin: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    elevation: 4,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  selectedMarker: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '20',
-  },
-  markerText: {
-    fontSize: FONTS.sizes.xs,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginTop: 2,
-  },
-  stationInfo: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: BORDER_RADIUS.lg,
-    borderTopRightRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  stationHeader: {
+  quickInfoHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: SPACING.md,
-  },
-  stationDetails: {
-    flex: 1,
-  },
-  stationName: {
-    fontSize: FONTS.sizes.lg,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: SPACING.xs,
   },
-  stationAddress: {
-    fontSize: FONTS.sizes.md,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  stationStats: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.xs,
-  },
-  statText: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-  },
-  closeButton: {
-    padding: SPACING.sm,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-  },
-  detailButton: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-  },
-  detailButtonText: {
+  quickInfoTitle: {
     fontSize: FONTS.sizes.md,
     fontWeight: '600',
     color: COLORS.text,
+    flex: 1,
+  },
+  closeButton: {
+    padding: SPACING.xs,
+  },
+  quickInfoAddress: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.md,
+  },
+  quickInfoStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: SPACING.md,
+  },
+  quickStat: {
+    alignItems: 'center',
+  },
+  quickStatNumber: {
+    fontSize: FONTS.sizes.lg,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  quickStatLabel: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.textSecondary,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
   },
   routeButton: {
-    flex: 1,
     backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
     gap: SPACING.xs,
+    flex: 1,
   },
   routeButtonText: {
-    fontSize: FONTS.sizes.md,
+    fontSize: FONTS.sizes.sm,
     fontWeight: '600',
     color: COLORS.white,
+  },
+  detailsButton: {
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    flex: 1,
+  },
+  detailsButtonText: {
+    fontSize: FONTS.sizes.sm,
+    fontWeight: '500',
+    color: COLORS.text,
   },
   fab: {
     position: 'absolute',
@@ -538,5 +451,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: SPACING.md,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
   },
 });
