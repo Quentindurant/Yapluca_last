@@ -91,10 +91,13 @@ export const authService = {
   // Get user data from Firestore
   getUserData: async (uid) => {
     try {
+      if (!uid) {
+        return null;
+      }
       const userDoc = await getDoc(doc(db, 'users', uid));
       return userDoc.exists() ? userDoc.data() : null;
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      // Silently handle error to avoid console spam
       return null;
     }
   },

@@ -157,9 +157,8 @@ export default function MapScreen({ navigation }) {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={false} />
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -247,28 +246,23 @@ export default function MapScreen({ navigation }) {
         </ScrollView>
       </View>
 
-        {/* Floating Action Button */}
-        <TouchableOpacity style={styles.fab}>
-          <Ionicons name="navigate" size={24} color={COLORS.white} />
-        </TouchableOpacity>
-      </SafeAreaView>
-    </View>
+      {/* Floating Action Button */}
+      <TouchableOpacity style={styles.fab}>
+        <Ionicons name="navigate" size={24} color={COLORS.white} />
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  safeArea: {
-    flex: 1,
     backgroundColor: COLORS.background,
   },
   header: {
     backgroundColor: COLORS.white,
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
+    paddingTop: SPACING.md,
     paddingBottom: SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,

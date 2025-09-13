@@ -143,9 +143,8 @@ export default function MapViewScreen({ navigation, route }) {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={false} />
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -261,23 +260,18 @@ export default function MapViewScreen({ navigation, route }) {
       >
         <Ionicons name="list" size={24} color={COLORS.white} />
       </TouchableOpacity>
-      </SafeAreaView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  safeArea: {
-    flex: 1,
     backgroundColor: COLORS.background,
   },
   header: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
+    paddingTop: SPACING.md,
     paddingBottom: SPACING.md,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
