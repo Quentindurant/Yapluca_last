@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import MapView, { Marker, Callout } from 'react-native-maps';
+// import MapView, { Marker, Callout } from 'react-native-maps';
 import { useAuth } from '../../context/AuthContext';
 import { chargingStationAPI, navigationAPI } from '../../services/api';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
