@@ -14,7 +14,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuth } from '../../context/AuthContext';
-import { chargingStationAPI } from '../../services/api';
+import { chargingStationAPI } from '../../services/chargingStationAPI';
+import { GDPRCompliance } from '../../utils/gdprCompliance';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
 export default function MapScreen({ navigation }) {
@@ -31,25 +32,52 @@ export default function MapScreen({ navigation }) {
 
   const getCurrentLocation = async () => {
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission refusée', 'L\'accès à la localisation est nécessaire pour trouver les bornes à proximité.');
+      setLocationLoading(true);
+      
+      // Check GDPR consent first
+      const locationPermission = await GDPRCompliance.requestLocationPermission();
+      
+      if (!locationPermission.granted) {
+        if (locationPermission.reason === 'consent_required') {
+          Alert.alert(
+            'Consentement requis',
+            'Vous devez accepter l\'utilisation de la géolocalisation dans vos préférences de confidentialité.',
+            [
+              { text: 'Annuler', style: 'cancel' },
+              { 
+                text: 'Paramètres', 
+                onPress: () => navigation.navigate('ConsentManagement')
+              }
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Permission refusée',
+            'L\'accès à la localisation est nécessaire pour trouver les stations à proximité.'
+          );
+        }
         return;
       }
 
-      let currentLocation = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({});
       const locationData = {
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       };
       setLocation(locationData);
-      
+
+      // Log data access for GDPR compliance
+      await GDPRCompliance.logDataAccess('geolocation', 'find_nearby_stations');
+
       // Load nearby stations
-      await loadNearbyStations(locationData.latitude, locationData.longitude);
+      await loadNearbyStations(location.coords.latitude, location.coords.longitude);
     } catch (error) {
       console.error('Error getting location:', error);
+      Alert.alert('Erreur', 'Impossible d\'obtenir votre position');
+    } finally {
+      setLocationLoading(false);
     }
   };
 
@@ -157,8 +185,8 @@ export default function MapScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={false} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={true} />
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -250,7 +278,7 @@ export default function MapScreen({ navigation }) {
       <TouchableOpacity style={styles.fab}>
         <Ionicons name="navigate" size={24} color={COLORS.white} />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -262,15 +290,11 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.white,
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: 50,
     paddingBottom: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    elevation: 2,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderBottomWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   headerTop: {
     flexDirection: 'row',
@@ -373,8 +397,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   nearbyContainer: {
-    flex: 1,
     paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
   },
   nearbyHeader: {
     flexDirection: 'row',

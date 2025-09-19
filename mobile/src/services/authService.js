@@ -6,7 +6,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import { auth, firestore as db } from '../config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const authService = {

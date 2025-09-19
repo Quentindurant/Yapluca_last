@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Image,
   StatusBar,
+  ScrollView,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -105,19 +107,19 @@ export default function MapViewScreen({ navigation, route }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={false} />
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Chargement de la carte...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={false} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} translucent={true} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -137,68 +139,57 @@ export default function MapViewScreen({ navigation, route }) {
         <Text style={styles.headerSubtitle}>Carte des bornes</Text>
       </View>
 
-      {/* Interactive Map */}
-      {location && (
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
-          showsUserLocation={true}
-          showsMyLocationButton={true}
-        >
-          {/* User Location Marker */}
-          <Marker
-            coordinate={{
-              latitude: location.latitude,
-              longitude: location.longitude,
+      {/* Map Placeholder - Native maps disabled for stability */}
+      <View style={styles.mapPlaceholder}>
+        <View style={styles.placeholderContent}>
+          <Ionicons name="map-outline" size={64} color={COLORS.gray.medium} />
+          <Text style={styles.placeholderTitle}>Carte Interactive</Text>
+          <Text style={styles.placeholderSubtitle}>
+            Visualisation des bornes de recharge à proximité
+          </Text>
+          {location && (
+            <Text style={styles.locationInfo}>
+              📍 Position: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+            </Text>
+          )}
+          <TouchableOpacity 
+            style={styles.mapButton}
+            onPress={() => {
+              const url = `https://www.google.com/maps/search/borne+de+recharge/@${location?.latitude || 48.8566},${location?.longitude || 2.3522},15z`;
+              Linking.openURL(url);
             }}
-            title="Ma position"
-            description="Vous êtes ici"
-            pinColor={COLORS.primary}
-          />
-          
-          {/* Station Markers */}
+          >
+            <Ionicons name="map" size={20} color={COLORS.white} />
+            <Text style={styles.mapButtonText}>Ouvrir dans Google Maps</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Stations List */}
+      <View style={styles.stationsContainer}>
+        <Text style={styles.stationsTitle}>Bornes à proximité ({nearbyStations.length})</Text>
+        <ScrollView showsVerticalScrollIndicator={false}>
           {nearbyStations.map((station) => (
-            <Marker
-              key={station.id}
-              coordinate={{
-                latitude: parseFloat(station.latitude),
-                longitude: parseFloat(station.longitude),
-              }}
-              title={station.name}
-              description={station.address}
+            <TouchableOpacity 
+              key={station.id} 
+              style={styles.stationItem}
+              onPress={() => handleStationSelect(station)}
             >
-              <View style={styles.customMarker}>
-                <Ionicons name="battery-charging" size={24} color={COLORS.white} />
+              <View style={styles.stationIcon}>
+                <Ionicons name="battery-charging" size={24} color={COLORS.primary} />
               </View>
-              <Callout style={styles.callout}>
-                <View style={styles.calloutContent}>
-                  <Text style={styles.calloutTitle}>{station.name}</Text>
-                  <Text style={styles.calloutAddress}>{station.address}</Text>
-                  <View style={styles.calloutStats}>
-                    <Text style={styles.calloutStat}>
-                      ✅ {station.available} disponibles
-                    </Text>
-                    <Text style={styles.calloutStat}>
-                      ⭐ {station.rating}
-                    </Text>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.calloutButton}
-                    onPress={() => handleStationSelect(station)}
-                  >
-                    <Text style={styles.calloutButtonText}>Voir détails</Text>
-                  </TouchableOpacity>
-                </View>
-              </Callout>
-            </Marker>
+              <View style={styles.stationDetails}>
+                <Text style={styles.stationName}>{station.name}</Text>
+                <Text style={styles.stationAddress}>{station.address}</Text>
+                <Text style={styles.stationStats}>
+                  ✅ {station.available} disponibles • ⭐ {station.rating}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.gray.medium} />
+            </TouchableOpacity>
           ))}
-        </MapView>
-      )}
+        </ScrollView>
+      </View>
 
       {/* Quick Station Info */}
       {selectedStation && (
@@ -252,7 +243,7 @@ export default function MapViewScreen({ navigation, route }) {
       >
         <Ionicons name="list" size={24} color={COLORS.white} />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -263,16 +254,12 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: 50,
     paddingBottom: SPACING.md,
     backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    elevation: 2,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderBottomWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   headerContent: {
     flexDirection: 'row',
@@ -294,10 +281,137 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
   },
   map: {
+    height: 300,
+    margin: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  mapContainer: {
     flex: 1,
-    margin: SPACING.md,
+    margin: SPACING.lg,
     borderRadius: BORDER_RADIUS.lg,
     overflow: 'hidden',
+  },
+  markerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerIcon: {
+    backgroundColor: COLORS.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: COLORS.white,
+  },
+  calloutContainer: {
+    padding: SPACING.sm,
+    minWidth: 150,
+  },
+  calloutTitle: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  calloutSubtitle: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+  },
+  calloutAvailable: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  mapButton: {
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginTop: SPACING.lg,
+    gap: SPACING.sm,
+  },
+  mapButtonText: {
+    color: COLORS.white,
+    fontSize: FONTS.sizes.md,
+    fontWeight: '600',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+  },
+  placeholderContent: {
+    alignItems: 'center',
+  },
+  placeholderTitle: {
+    fontSize: FONTS.sizes.lg,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginTop: SPACING.md,
+    textAlign: 'center',
+  },
+  placeholderSubtitle: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.sm,
+  },
+  locationInfo: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  stationsContainer: {
+    backgroundColor: COLORS.white,
+    margin: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    flex: 1,
+  },
+  stationsTitle: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+  },
+  stationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  stationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+  },
+  stationDetails: {
+    flex: 1,
+  },
+  stationName: {
+    fontSize: FONTS.sizes.sm,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  stationAddress: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+  },
+  stationStats: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.textSecondary,
   },
   customMarker: {
     backgroundColor: COLORS.primary,

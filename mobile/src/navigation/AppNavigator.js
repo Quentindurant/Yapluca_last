@@ -12,6 +12,9 @@ import MapViewScreen from '../screens/main/MapViewScreen';
 import HistoryScreen from '../screens/main/HistoryScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import StationDetailScreen from '../screens/main/StationDetailScreen';
+import PrivacyPolicyScreen from '../screens/legal/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../screens/legal/TermsOfServiceScreen';
+import ConsentScreen from '../screens/legal/ConsentScreen';
 
 import { COLORS } from '../constants/theme';
 
@@ -69,12 +72,21 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ headerShown: false }} />
           </>
         ) : (
           // Main App Stack
           <>
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />
-            <Stack.Screen name="StationDetail" component={StationDetailScreen} />
+            <Stack.Screen 
+              name="StationDetail" 
+              component={StationDetailScreen} 
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ConsentManagement" component={ConsentScreen} options={{ headerShown: false }} />
           </>
         )}
       </Stack.Navigator>

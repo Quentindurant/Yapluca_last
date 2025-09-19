@@ -8,142 +8,42 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { chargeNowAPI } from '../../services/api';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../constants/theme';
 
-const batteryTypes = [
-  {
-    id: 'premium',
-    name: 'Batterie Premium',
-    capacity: '20000 mAh',
-    type: 'Charge rapide',
-    price: '2.50€/jour',
-    chargeTime: '~4h',
-    battery: 98,
-    color: COLORS.primary,
-  },
-  {
+const getBatteryTypes = (station) => {
+  // Only show standard batteries for now
+  const standardBattery = {
     id: 'standard',
     name: 'Batterie Standard',
     capacity: '10000 mAh',
     type: 'Charge normale',
-    price: '1.50€/jour',
+    price: 1.50,
+    priceDisplay: '1.50€/jour',
     chargeTime: '~2h',
-    battery: 76,
+    battery: Math.floor(Math.random() * 25) + 70, // 70-95%
     color: COLORS.warning,
-  },
-];
+    available: Math.floor(Math.random() * 5) + 2, // 2-6 available
+  };
+  
+  return [standardBattery]; // Only standard batteries available
+};
 
 export default function StationDetailScreen({ navigation, route }) {
   const { station } = route.params;
   const [selectedBattery, setSelectedBattery] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [batteryTypes, setBatteryTypes] = useState([]);
   const { user } = useAuth();
 
-  const handleSelectBattery = (battery) => {
-    setSelectedBattery(battery);
-  };
+  useEffect(() => {
+    setBatteryTypes(getBatteryTypes(station));
+  }, [station]);
 
-  const handleRentBattery = async () => {
-    if (!selectedBattery) {
-      Alert.alert('Sélection requise', 'Veuillez sélectionner une batterie');
-      return;
-    }
-    
-    Alert.alert(
-      'Confirmer la location',
-      `Louer ${selectedBattery.name} pour ${selectedBattery.price} ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Confirmer', 
-          onPress: async () => {
-            setLoading(true);
-            try {
-              // Create rental order with ChargeNow API
-              const orderData = {
-                stationId: station.id,
-                batteryType: selectedBattery.id,
-                userId: user?.uid,
-                price: selectedBattery.price,
-                duration: '1 day'
-              };
-              
-              const result = await chargeNowAPI.createRentOrder(orderData);
-              
-              Alert.alert('Succès', 'Batterie louée avec succès !', [
-                { text: 'OK', onPress: () => navigation.goBack() }
-              ]);
-            } catch (error) {
-              console.error('Rental error:', error);
-              Alert.alert('Erreur', 'Impossible de louer la batterie. Veuillez réessayer.');
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const BatteryCard = ({ battery }) => (
-    <TouchableOpacity
-      style={[
-        styles.batteryCard,
-        selectedBattery?.id === battery.id && styles.batteryCardSelected
-      ]}
-      onPress={() => handleSelectBattery(battery)}
-    >
-      <View style={styles.batteryHeader}>
-        <View style={[styles.batteryIcon, { backgroundColor: `${battery.color}20` }]}>
-          <Ionicons name="battery-charging" size={24} color={battery.color} />
-        </View>
-        <View style={styles.batteryInfo}>
-          <Text style={styles.batteryName}>{battery.name}</Text>
-          <Text style={styles.batterySpecs}>{battery.capacity} - {battery.type}</Text>
-        </View>
-        <Text style={styles.batteryPercentage}>{battery.battery}%</Text>
-      </View>
-      
-      <View style={styles.batteryProgress}>
-        <View 
-          style={[
-            styles.batteryProgressBar, 
-            { 
-              width: `${battery.battery}%`,
-              backgroundColor: battery.color 
-            }
-          ]} 
-        />
-      </View>
-      
-      <View style={styles.batteryDetails}>
-        <View style={styles.batteryDetailItem}>
-          <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
-          <Text style={styles.batteryDetailText}>Temps de charge: {battery.chargeTime}</Text>
-        </View>
-        <Text style={styles.batteryPrice}>{battery.price}</Text>
-      </View>
-      
-      <TouchableOpacity 
-        style={[
-          styles.selectButton,
-          selectedBattery?.id === battery.id && styles.selectButtonSelected
-        ]}
-        onPress={() => handleSelectBattery(battery)}
-      >
-        <Text style={[
-          styles.selectButtonText,
-          selectedBattery?.id === battery.id && styles.selectButtonTextSelected
-        ]}>
-          {selectedBattery?.id === battery.id ? 'Sélectionnée' : 'Sélectionner cette batterie'}
-        </Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -173,7 +73,13 @@ export default function StationDetailScreen({ navigation, route }) {
           <View style={styles.addressContainer}>
             <Text style={styles.addressLabel}>Adresse</Text>
             <Text style={styles.addressText}>{station.address}</Text>
-            <TouchableOpacity style={styles.navigationButton}>
+            <TouchableOpacity 
+              style={styles.navigationButton}
+              onPress={() => {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(station.address)}`;
+                Linking.openURL(url);
+              }}
+            >
               <Ionicons name="navigate" size={16} color={COLORS.primary} />
               <Text style={styles.navigationText}>Itinéraire</Text>
             </TouchableOpacity>
@@ -185,29 +91,41 @@ export default function StationDetailScreen({ navigation, route }) {
           <Text style={styles.sectionTitle}>Batteries disponibles</Text>
           
           {batteryTypes.map((battery) => (
-            <BatteryCard key={battery.id} battery={battery} />
+            <View key={battery.id} style={styles.batteryCard}>
+              <View style={styles.batteryHeader}>
+                <View style={[styles.batteryIcon, { backgroundColor: `${battery.color}20` }]}>
+                  <Ionicons name="battery-charging" size={24} color={battery.color} />
+                </View>
+                <View style={styles.batteryInfo}>
+                  <Text style={styles.batteryName}>{battery.name}</Text>
+                  <Text style={styles.batterySpecs}>{battery.capacity} - {battery.type}</Text>
+                </View>
+                <Text style={styles.batteryPercentage}>{battery.battery}%</Text>
+              </View>
+              
+              <View style={styles.batteryProgress}>
+                <View 
+                  style={[
+                    styles.batteryProgressBar, 
+                    { 
+                      width: `${battery.battery}%`,
+                      backgroundColor: battery.color 
+                    }
+                  ]} 
+                />
+              </View>
+              
+              <View style={styles.batteryDetails}>
+                <View style={styles.batteryDetailItem}>
+                  <Ionicons name="time-outline" size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.batteryDetailText}>Temps de charge: {battery.chargeTime}</Text>
+                </View>
+                <Text style={styles.batteryAvailable}>{battery.available} disponibles</Text>
+              </View>
+            </View>
           ))}
         </View>
       </ScrollView>
-
-      {/* Bottom Action */}
-      {selectedBattery && (
-        <View style={styles.bottomAction}>
-          <View style={styles.selectedInfo}>
-            <Text style={styles.selectedBatteryName}>{selectedBattery.name}</Text>
-            <Text style={styles.selectedBatteryPrice}>{selectedBattery.price}</Text>
-          </View>
-          <TouchableOpacity 
-            style={[styles.rentButton, loading && styles.rentButtonDisabled]} 
-            onPress={handleRentBattery}
-            disabled={loading}
-          >
-            <Text style={styles.rentButtonText}>
-              {loading ? 'Location en cours...' : 'Louer maintenant'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -222,9 +140,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingTop: 50,
+    paddingBottom: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   backButton: {
     padding: SPACING.sm,
@@ -375,63 +296,9 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.sm,
     color: COLORS.textSecondary,
   },
-  batteryPrice: {
-    fontSize: FONTS.sizes.md,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  selectButton: {
-    backgroundColor: COLORS.surface,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-  },
-  selectButtonSelected: {
-    backgroundColor: COLORS.primary,
-  },
-  selectButtonText: {
-    fontSize: FONTS.sizes.md,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  selectButtonTextSelected: {
-    color: COLORS.white,
-  },
-  bottomAction: {
-    backgroundColor: COLORS.white,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-  },
-  selectedInfo: {
-    flex: 1,
-  },
-  selectedBatteryName: {
-    fontSize: FONTS.sizes.md,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  selectedBatteryPrice: {
+  batteryAvailable: {
     fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-  },
-  rentButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  rentButtonText: {
-    color: COLORS.white,
-    fontSize: FONTS.sizes.md,
     fontWeight: '600',
-  },
-  rentButtonDisabled: {
-    backgroundColor: COLORS.textSecondary,
-    opacity: 0.7,
+    color: COLORS.primary,
   },
 });

@@ -93,10 +93,11 @@ export default function ProfileScreen() {
       <ScrollView style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Mon Profil</Text>
+          <Image 
+            source={require('../../../assets/logo-removebg-preview.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <TouchableOpacity style={styles.moreButton}>
             <Ionicons name="ellipsis-horizontal" size={24} color={COLORS.text} />
           </TouchableOpacity>
@@ -209,6 +210,39 @@ export default function ProfileScreen() {
         </ProfileSection>
 
         {/* Logout */}
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('ConsentManagement')}
+        >
+          <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.textSecondary} />
+          <Text style={styles.menuItemText}>Gestion des consentements</Text>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('PrivacyPolicy')}
+        >
+          <Ionicons name="document-text-outline" size={20} color={COLORS.textSecondary} />
+          <Text style={styles.menuItemText}>Politique de confidentialité</Text>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('TermsOfService')}
+        >
+          <Ionicons name="reader-outline" size={20} color={COLORS.textSecondary} />
+          <Text style={styles.menuItemText}>Conditions d'utilisation</Text>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem}>
+          <Ionicons name="help-circle-outline" size={20} color={COLORS.textSecondary} />
+          <Text style={styles.menuItemText}>Aide</Text>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
           <Text style={styles.logoutText}>Se déconnecter</Text>

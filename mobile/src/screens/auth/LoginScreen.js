@@ -27,17 +27,30 @@ export default function LoginScreen({ navigation }) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
     }
+
     if (!acceptTerms) {
-      Alert.alert('Erreur', 'Veuillez accepter les conditions d\'utilisation');
+      Alert.alert('Erreur', 'Vous devez accepter les conditions d\'utilisation');
       return;
     }
 
     setLoading(true);
-    const result = await login(email, password);
-    setLoading(false);
-
-    if (!result.success) {
-      Alert.alert('Erreur de connexion', result.error);
+    try {
+      await login(email, password);
+      
+      // Check if user needs to update consent preferences
+      const { GDPRCompliance } = require('../../utils/gdprCompliance');
+      const shouldShowConsent = await GDPRCompliance.shouldShowConsentBanner();
+      
+      if (shouldShowConsent) {
+        // Navigate to consent screen after successful login
+        setTimeout(() => {
+          navigation.navigate('ConsentManagement');
+        }, 1000);
+      }
+    } catch (error) {
+      Alert.alert('Erreur', error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -124,9 +137,19 @@ export default function LoginScreen({ navigation }) {
               </TouchableOpacity>
               <Text style={styles.termsText}>
                 J'accepte les{' '}
-                <Text style={styles.termsLink}>conditions d'utilisation</Text>
+                <Text 
+                  style={styles.termsLink}
+                  onPress={() => navigation.navigate('TermsOfService')}
+                >
+                  conditions d'utilisation
+                </Text>
                 {' '}et la{' '}
-                <Text style={styles.termsLink}>politique de confidentialité</Text>
+                <Text 
+                  style={styles.termsLink}
+                  onPress={() => navigation.navigate('PrivacyPolicy')}
+                >
+                  politique de confidentialité
+                </Text>
               </Text>
             </View>
 
